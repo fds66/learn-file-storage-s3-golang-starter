@@ -101,7 +101,7 @@ func (cfg *apiConfig) handlerUploadThumbnail(w http.ResponseWriter, r *http.Requ
 	}
 	videoThumbnails[video.ID] = newThumbnail
 	//fmt.Printf("new thumbnail struct and entry in map %+v\n", videoThumbnails[video.ID])
-	newURL := fmt.Sprintf("http://localhost:<port>/api/thumbnails/{videoID}%s", video.ID.String())
+	newURL := fmt.Sprintf("http://localhost:8091/api/thumbnails/%s", video.ID.String())
 
 	video.ThumbnailURL = &newURL
 	fmt.Printf("new url %s and updated video struct %+v\n", newURL, video)
