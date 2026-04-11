@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"mime"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -63,17 +64,47 @@ func (cfg *apiConfig) handlerUploadThumbnail(w http.ResponseWriter, r *http.Requ
 
 
 		}
+		func ParseMediaType(v string) (mediatype string, params map[string]string, err error)
+		examples
+		package main
+
+			import (
+				"fmt"
+				"mime"
+			)
+
+			func main() {
+				mediatype, params, err := mime.ParseMediaType("text/html; charset=utf-8")
+				if err != nil {
+					panic(err)
+				}
+
+				fmt.Println("type:", mediatype)
+				fmt.Println("charset:", params["charset"])
+			}
+				Output:
+					type: text/html
+					charset: utf-8
+
 	*/
 	RmediaType := header.Header.Get("Content-Type")
-	//fmt.Printf("media type %s\n", RmediaType)
+	//ParseMediaType(v string) (mediatype string, params map[string]string, err error)
+	mediatype, _, err := mime.ParseMediaType(RmediaType)
+	if err != nil {
+		log.Printf("error parsing media type %v\n", err)
+	}
+	if !(mediatype == "image/jpeg" || mediatype == "image/png") {
+		log.Printf("wrong media type \n")
+		respondWithError(w, http.StatusBadRequest, "Wrong file type", fmt.Errorf("Wrong file type in Content-Type"))
+		return
+	}
 
-	//imageData, err := io.ReadAll(thumbnailData)
-	//fmt.Printf("user id %v\n", userID)
 	video, err := cfg.db.GetVideo(videoID)
 	if video.UserID != userID {
 		respondWithError(w, http.StatusUnauthorized, "Not authorised", err)
+		return
 	}
-	//fmt.Printf("return video struct %+v\n", video)
+
 	if err != nil {
 		log.Printf("error from retrieval of video from database %v\n", err)
 
@@ -93,6 +124,7 @@ func (cfg *apiConfig) handlerUploadThumbnail(w http.ResponseWriter, r *http.Requ
 	}*/
 	//or extract it from the string
 	fileExtension := strings.Replace(RmediaType, "image/", "", 1)
+
 	filename := fmt.Sprintf("%s.%s", video.ID.String(), fileExtension)
 	newFilepath := filepath.Join(cfg.assetsRoot, filename)
 	fmt.Printf("new filepath %v\n", newFilepath)
