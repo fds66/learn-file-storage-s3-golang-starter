@@ -1,11 +1,13 @@
 package main
 
 import (
-	"encoding/base64"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
+	"os"
+	"path/filepath"
+	"strings"
 
 	"github.com/bootdotdev/learn-file-storage-s3-golang-starter/internal/auth"
 	"github.com/google/uuid"
@@ -65,7 +67,7 @@ func (cfg *apiConfig) handlerUploadThumbnail(w http.ResponseWriter, r *http.Requ
 	RmediaType := header.Header.Get("Content-Type")
 	//fmt.Printf("media type %s\n", RmediaType)
 
-	imageData, err := io.ReadAll(thumbnailData)
+	//imageData, err := io.ReadAll(thumbnailData)
 	//fmt.Printf("user id %v\n", userID)
 	video, err := cfg.db.GetVideo(videoID)
 	if video.UserID != userID {
@@ -76,55 +78,36 @@ func (cfg *apiConfig) handlerUploadThumbnail(w http.ResponseWriter, r *http.Requ
 		log.Printf("error from retrieval of video from database %v\n", err)
 
 	}
-	/*
-					type Video struct {
-					ID           uuid.UUID `json:"id"`
-					CreatedAt    time.Time `json:"created_at"`
-					UpdatedAt    time.Time `json:"updated_at"`
-					ThumbnailURL *string   `json:"thumbnail_url"`
-					VideoURL     *string   `json:"video_url"`
-					CreateVideoParams
-				}
-
-				type CreateVideoParams struct {
-					Title       string    `json:"title"`
-					Description string    `json:"description"`
-					UserID      uuid.UUID `json:"user_id"`
-				}
-					type thumbnail struct {
-					data      []byte
-					mediaType string
-				}
-			//data:<media-type>;base64,<data>
-				A few examples:
-
-		data:,Hello%2C%20World%21
-		The text/plain data Hello, World!. Note how the comma is percent-encoded as %2C, and the space character as %20.
-
-		data:text/plain;base64,SGVsbG8sIFdvcmxkIQ==
-		base64-encoded version of the above
-
-		data:text/html,%3Ch1%3EHello%2C%20World%21%3C%2Fh1%3E
-		An HTML document with <h1>Hello, World!</h1>
-
-		data:text/html,%3Cscript%3Ealert%28%27hi%27%29%3B%3C%2Fscript%3E
-		An HTML document with <script>alert('hi');</script> that executes a JavaScript alert. Note that the closing script tag is required.
-	*/
-
-	/* REPLACE all of the videoThumbnails map with encoding the image in the thumbnail url field of the video database
-	newThumbnail := thumbnail{
-		data:      imageData,
-		mediaType: RmediaType,
+	// store the thumbnail data into a file
+	//extension determined by media type
+	/*var fileExtension string
+	switch RmediaType {
+	case "image/png":
+		fileExtension = "png"
+	case "image.gif":
+		fileExtension = "gif"
+	case "image.jpeg":
+		fileExtension = "jpeg"
+	case "image.tiff":
+		fileExtension = "tiff"
+	}*/
+	//or extract it from the string
+	fileExtension := strings.Replace(RmediaType, "image/", "", 1)
+	filename := fmt.Sprintf("%s.%s", video.ID.String(), fileExtension)
+	newFilepath := filepath.Join(cfg.assetsRoot, filename)
+	fmt.Printf("new filepath %v\n", newFilepath)
+	newFile, err := os.Create(newFilepath)
+	if err != nil {
+		log.Printf("error creating thumbnail file %v\n", err)
 	}
-	*/
-	//videoThumbnails[video.ID] = newThumbnail
-	//fmt.Printf("new thumbnail struct and entry in map %+v\n", videoThumbnails[video.ID])
-	//newURL := fmt.Sprintf("http://localhost:8091/api/thumbnails/%s", video.ID.String())
+	number, err := io.Copy(newFile, thumbnailData)
+	if err != nil || number == 0 {
+		log.Printf("error storing data in newfile %v\n", err)
+	}
+	newURL := fmt.Sprintf("http://localhost:%s/assets/%s", cfg.port, filename)
+	//http://localhost:<port>/assets/<videoID>.<file_extension>
 
-	encodedThumbnail := base64.StdEncoding.EncodeToString(imageData)
-
-	dataURL := fmt.Sprintf("data:%s;base64,%s", RmediaType, encodedThumbnail)
-	video.ThumbnailURL = &dataURL
+	video.ThumbnailURL = &newURL
 
 	err = cfg.db.UpdateVideo(video)
 	if err != nil {
