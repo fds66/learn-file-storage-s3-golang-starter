@@ -3,3 +3,8 @@ out
 .env
 assets/
 samples/
+aws
+tmp
+tmp/main
+awscliv2.zip
+/home/fds66/workspace/fds66/github.com/fds66/tubely/learn-file-storage-s3-golang-starter/tmp

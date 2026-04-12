@@ -1,6 +1,8 @@
 package main
 
 import (
+	"crypto/rand"
+	"encoding/base64"
 	"fmt"
 	"io"
 	"log"
@@ -48,45 +50,7 @@ func (cfg *apiConfig) handlerUploadThumbnail(w http.ResponseWriter, r *http.Requ
 	if err != nil {
 		log.Printf("Error from upload thumbnail handler when extracting thumbnail and header %v", err)
 	}
-	/*
-			type File interface {
-			io.Reader
-			io.ReaderAt
-			io.Seeker
-			io.Closer
-		}
 
-			type FileHeader struct {
-			Filename string
-			Header   textproto.MIMEHeader
-			Size     int64
-			// contains filtered or unexported fields
-
-
-		}
-		func ParseMediaType(v string) (mediatype string, params map[string]string, err error)
-		examples
-		package main
-
-			import (
-				"fmt"
-				"mime"
-			)
-
-			func main() {
-				mediatype, params, err := mime.ParseMediaType("text/html; charset=utf-8")
-				if err != nil {
-					panic(err)
-				}
-
-				fmt.Println("type:", mediatype)
-				fmt.Println("charset:", params["charset"])
-			}
-				Output:
-					type: text/html
-					charset: utf-8
-
-	*/
 	RmediaType := header.Header.Get("Content-Type")
 	//ParseMediaType(v string) (mediatype string, params map[string]string, err error)
 	mediatype, _, err := mime.ParseMediaType(RmediaType)
@@ -109,23 +73,18 @@ func (cfg *apiConfig) handlerUploadThumbnail(w http.ResponseWriter, r *http.Requ
 		log.Printf("error from retrieval of video from database %v\n", err)
 
 	}
-	// store the thumbnail data into a file
-	//extension determined by media type
-	/*var fileExtension string
-	switch RmediaType {
-	case "image/png":
-		fileExtension = "png"
-	case "image.gif":
-		fileExtension = "gif"
-	case "image.jpeg":
-		fileExtension = "jpeg"
-	case "image.tiff":
-		fileExtension = "tiff"
-	}*/
+
 	//or extract it from the string
 	fileExtension := strings.Replace(RmediaType, "image/", "", 1)
+	// create random file name to make sure thumbnails aren't cached
+	nameBytes := make([]byte, 32)
+	_, err = rand.Read(nameBytes)
+	if err != nil {
+		log.Printf("error creating random filename bytes %v\n", err)
+	}
+	randFilename := base64.RawURLEncoding.EncodeToString(nameBytes)
 
-	filename := fmt.Sprintf("%s.%s", video.ID.String(), fileExtension)
+	filename := fmt.Sprintf("%s.%s", randFilename, fileExtension)
 	newFilepath := filepath.Join(cfg.assetsRoot, filename)
 	fmt.Printf("new filepath %v\n", newFilepath)
 	newFile, err := os.Create(newFilepath)
