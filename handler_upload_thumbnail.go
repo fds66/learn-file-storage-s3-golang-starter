@@ -50,7 +50,7 @@ func (cfg *apiConfig) handlerUploadThumbnail(w http.ResponseWriter, r *http.Requ
 	if err != nil {
 		log.Printf("Error from upload thumbnail handler when extracting thumbnail and header %v", err)
 	}
-
+	defer thumbnailData.Close()
 	RmediaType := header.Header.Get("Content-Type")
 	//ParseMediaType(v string) (mediatype string, params map[string]string, err error)
 	mediatype, _, err := mime.ParseMediaType(RmediaType)
