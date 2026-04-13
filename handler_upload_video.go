@@ -112,11 +112,19 @@ func (cfg *apiConfig) handlerUploadVideo(w http.ResponseWriter, r *http.Request)
 
 	// content type mime
 	mimeType := "video/mp4"
+	fastStartFile, err := processVideoForFastStart(tempFile.Name())
+	fastStartFileReader, err := os.Open(fastStartFile)
+	if err != nil {
+		log.Printf("error opening fast start file %v\n", err)
+		respondWithError(w, http.StatusInternalServerError, "", err)
+	}
+	defer os.Remove(fastStartFileReader.Name())
+	defer fastStartFileReader.Close()
 
 	s3params := s3.PutObjectInput{
 		Bucket:      &cfg.s3Bucket,
 		Key:         &keyName,
-		Body:        tempFile,
+		Body:        fastStartFileReader,
 		ContentType: &mimeType,
 	}
 	_, err = cfg.s3Client.PutObject(context.Background(), &s3params)
@@ -250,3 +258,10 @@ func getVideoAspectRatio(filePath string) (string, error) {
 		} `json:"streams"`
 	}
 */
+
+func processVideoForFastStart(filePath string) (string, error) {
+	outputFilePath := fmt.Sprintf("%s.processing", filePath)
+	execCommand := exec.Command("ffmpeg", "-i", filePath, "-c", "copy", "-movflags", "faststart", "-f", "mp4", outputFilePath)
+	execCommand.Run()
+	return outputFilePath, nil
+}
